@@ -1,43 +1,61 @@
+import tkinter as tk
+from tkinter import messagebox, ttk
+import threading
+import os
+import platform
+import shutil
+import time
+from queue import Queue, Empty
+from threading import Event
+from python_script.definition import all_definition
+from python_script.config_gui import open_settings_window
+from python_script.ffmpeg_download import download_ffmpeg_windows
+from python_script.rife_download import download_rife
+from python_script.setting_information import setting_information
+from python_script.convert_to_image import convert_video_to_images
+from python_script.calculate_psnr import calculate_psnr
+from python_script.psnr_ratio import calculate_psnr_ratio
+from python_script.scene_change_detection import value_definitions
+from python_script.analyse_scene import analyse_scene_calculate
+from python_script.frame_thinning import frame_thinning
+from python_script.calculate_gaps import calculate_gaps
+from python_script.frame_interp_1 import interpolate_frames
+from python_script.frame_interp_2 import interpolate_final_frames
+from python_script.noise_reduction import noise_reduction
+from python_script.convert_to_yuvj420p import convert_to_yuvj420p
+from python_script.encode_and_merge import encode_video
+from python_script.messages import MESSAGES
+
+def read_lang_from_config(config_path):
+    lang = "en"  # デフォルト
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            lines = [line.strip() for line in f.readlines()]
+        if lines and lines[-1] in ("ja", "en"):
+            lang = lines[-1]
+    return lang
+
 def main():
-    import tkinter as tk
-    from tkinter import messagebox, ttk
-    import threading
-    import os
-    import platform
-    import shutil
-    import time
-    from queue import Queue, Empty
-    from threading import Event
-    from python_script.definition import all_definition
-    from python_script.config_gui import open_settings_window
-    from python_script.ffmpeg_download import download_ffmpeg_windows
-    from python_script.rife_download import download_rife
-    from python_script.setting_information import setting_information
-    from python_script.convert_to_image import convert_video_to_images
-    from python_script.calculate_psnr import calculate_psnr
-    from python_script.psnr_ratio import calculate_psnr_ratio
-    from python_script.scene_change_detection import value_definitions
-    from python_script.analyse_scene import analyse_scene_calculate
-    from python_script.frame_thinning import frame_thinning
-    from python_script.calculate_gaps import calculate_gaps
-    from python_script.frame_interp_1 import interpolate_frames
-    from python_script.frame_interp_2 import interpolate_final_frames
-    from python_script.noise_reduction import noise_reduction
-    from python_script.convert_to_yuvj420p import convert_to_yuvj420p
-    from python_script.encode_and_merge import encode_video
+    # --- 言語設定の読み込み ---
+    config_path = "config"
+    lang = read_lang_from_config(config_path)
+
+    def getmsg(key):
+        return MESSAGES[lang][key]
 
     progress_queue = Queue()
     stop_event = Event()
 
     is_os = platform.system().lower()
+    is_windows = is_os == "windows"
+
     temp_folder = "temp"
-    config_path = "config"
     ffmpeg_dest_dir = "ffmpeg_bin"
     rife_dest_dir = "rife"
     material_folder = "material"
     jpg_folder = os.path.join(temp_folder, "jpg")
     output_jpg = os.path.join(temp_folder, "output_jpg")
-    final_jpg = os.path.join("temp", "final_jpg")
+    final_jpg = os.path.join(temp_folder, "final_jpg")
     filename_path = os.path.join(temp_folder, "filename.txt")
     file_count_path = os.path.join(temp_folder, "file_count.txt")
     psnr_file_path = os.path.join(temp_folder, "psnr_values.txt")
@@ -46,25 +64,25 @@ def main():
     file_count_file = os.path.join(temp_folder, "file_count.txt")
     scene_threshold_file = os.path.join(temp_folder, "scene_threshold.txt")
     gap_file = os.path.join(temp_folder, "gaps.txt")
-
-    is_windows = is_os == "windows"
     ffmpeg_path = os.path.join("ffmpeg_bin", "ffmpeg.exe") if is_windows else "ffmpeg"
     ffprobe_path = os.path.join("ffmpeg_bin", "ffprobe.exe") if is_windows else "ffprobe"
 
     root = tk.Tk()
-    root.title("vulkan_interp_python_ver0.60")
-    root.geometry("650x700")
+    root.title(getmsg("app_title"))
+    root.geometry("750x750")
 
-    tk.Label(root, text="処理を選択してください").pack(pady=10)
+    # UIラベル・ボタン
+    label = tk.Label(root, text=getmsg("select_action"))
+    label.pack(pady=10)
 
-    run_button = tk.Button(root, text="START!", command=lambda: run_main_py_async())
+    run_button = tk.Button(root, text=getmsg("start"), command=lambda: run_main_py_async())
     run_button.pack(pady=5)
 
-    stop_button = tk.Button(root, text="STOP", command=lambda: stop_event.set())
+    stop_button = tk.Button(root, text=getmsg("stop"), command=lambda: stop_event.set())
     stop_button.pack(pady=5)
 
     settings_button = tk.Button(
-        root, text="設定を変更",
+        root, text=getmsg("settings"),
         command=lambda: open_settings_window(config_path, is_os, parent=root)
     )
     settings_button.pack(pady=5)
@@ -108,9 +126,9 @@ def main():
                         progress_var.set(percent)
                         fps = match.group(3)
                         if fps:
-                            progress_text_var.set(f"{current} / {total}   ({float(fps):.2f} fps)")
+                            progress_text_var.set(f"{getmsg('progress')}: {current} / {total}   ({float(fps):.2f} fps)")
                         else:
-                            progress_text_var.set(f"{current} / {total}")
+                            progress_text_var.set(f"{getmsg('progress')}: {current} / {total}")
                     else:
                         progress_text_var.set(clean_line)
                 elif line.startswith("[ERROR]"):
@@ -124,10 +142,13 @@ def main():
 
     def initial_check():
         if not os.path.exists(config_path):
-            progress_queue.put("[ERROR] configファイルが見つかりません。\n設定変更から、一度「設定を保存」して下さい。\n")
+            progress_queue.put(f"[ERROR] Config file not found.\nPlease open 'Change settings' and click 'Save settings' at least once.\n")
+            progress_queue.put(f"[ERROR] configファイルが見つかりません。\n'Change settings'から、一度'save settings'をクリックして下さい。\n")
         if not os.path.exists(material_folder):
-            progress_queue.put("[ERROR] materialフォルダが見つかりません\n")
-            progress_queue.put("materialフォルダを作成します。\n")
+            progress_queue.put(f"[ERROR] Material folder not found.\n")
+            progress_queue.put(f"Creating material folder.\n")
+            progress_queue.put(f"[ERROR] materialフォルダが見つかりません\n")
+            progress_queue.put(f"materialフォルダを作成します。\n")
             os.makedirs(material_folder, exist_ok=True)
 
     def run_main_py_async():
@@ -135,7 +156,7 @@ def main():
 
         def worker():
             log_text.delete("1.0", tk.END)
-            result = all_definition(temp_folder, config_path, material_folder, progress_queue)
+            result = all_definition(temp_folder, config_path, material_folder, progress_queue, lang)
             if result == "no_file" or stop_event.is_set(): return
 
             try:
@@ -143,57 +164,57 @@ def main():
                     lines = f.readlines()
                 python_path = lines[3].strip().split()[0]
             except Exception as e:
-                progress_queue.put(f"[ERROR] configファイル読み込みエラー: {e}\n")
+                progress_queue.put(f"[ERROR] {getmsg('config_read_error')}: {e}\n")
                 return
 
-            setting_information(config_path, progress_queue)
+            setting_information(config_path, progress_queue, lang)
             if stop_event.is_set(): return
 
             start_time = time.time()
-            download_ffmpeg_windows(ffmpeg_dest_dir, progress_queue)
+            download_ffmpeg_windows(ffmpeg_dest_dir, progress_queue, lang)
             if stop_event.is_set(): return
 
-            download_rife(rife_dest_dir, progress_queue)
+            download_rife(rife_dest_dir, progress_queue, lang)
             if stop_event.is_set(): return
 
-            convert_video_to_images(ffmpeg_path, ffprobe_path, temp_folder, jpg_folder, material_folder, filename_path, progress_queue)
+            convert_video_to_images(ffmpeg_path, ffprobe_path, temp_folder, jpg_folder, material_folder, filename_path, progress_queue, lang)
             if stop_event.is_set(): return
 
-            calculate_psnr(jpg_folder, file_count_path, ffmpeg_path, psnr_file_path, progress_queue)
+            calculate_psnr(jpg_folder, file_count_path, ffmpeg_path, psnr_file_path,
+               queue=progress_queue, stop_event=stop_event, lang=lang)
             if stop_event.is_set(): return
 
-            calculate_psnr_ratio(psnr_file_path, psnr_ratio_file_path, progress_queue)
+            calculate_psnr_ratio(psnr_file_path, psnr_ratio_file_path, progress_queue, lang)
             if stop_event.is_set(): return
 
-            value_definitions(config_path, psnr_file_path, file_count_file, scene_change_frame_file, progress_queue)
+            value_definitions(config_path, psnr_file_path, file_count_file, scene_change_frame_file, progress_queue, lang)
             if stop_event.is_set(): return
 
-            analyse_scene_calculate(config_path, psnr_file_path, psnr_ratio_file_path, scene_change_frame_file, scene_threshold_file, progress_queue)
+            analyse_scene_calculate(config_path, psnr_file_path, psnr_ratio_file_path, scene_change_frame_file, scene_threshold_file, progress_queue, lang)
             if stop_event.is_set(): return
 
-            frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, jpg_folder, output_jpg, progress_queue)
+            frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, jpg_folder, output_jpg, progress_queue, lang)
             if stop_event.is_set(): return
 
-            calculate_gaps(jpg_folder, gap_file, progress_queue)
+            calculate_gaps(jpg_folder, gap_file, progress_queue, lang)
             if stop_event.is_set(): return
 
-            interpolate_frames(config_path, jpg_folder, output_jpg, gap_file, scene_change_frame_file, file_count_path, progress_queue)
+            interpolate_frames(config_path, jpg_folder, output_jpg, gap_file, scene_change_frame_file, file_count_path, progress_queue, lang)
             if stop_event.is_set(): return
 
-            interpolate_final_frames(config_path, jpg_folder, output_jpg, final_jpg, progress_queue)
+            interpolate_final_frames(config_path, jpg_folder, output_jpg, final_jpg, progress_queue, lang)
             if stop_event.is_set(): return
 
             noise_reduction(config_path, scene_change_frame_file, final_jpg, progress_queue)
             if stop_event.is_set(): return
 
-            convert_to_yuvj420p(ffmpeg_path, final_jpg, output_jpg, progress_queue)
+            convert_to_yuvj420p(ffmpeg_path, final_jpg, output_jpg, progress_queue, lang)
             if stop_event.is_set(): return
 
-            encode_video(queue=progress_queue)
+            encode_video(temp="temp", config_path="config", queue=progress_queue, lang=lang)
             if stop_event.is_set(): return
-
             elapsed_time = time.time() - start_time
-            msg = f"処理時間: {elapsed_time:.2f} 秒\n"
+            msg = f"{getmsg('elapsed_time')}: {elapsed_time:.2f} {getmsg('seconds')}\n"
             progress_queue.put(msg)
 
         threading.Thread(target=worker, daemon=True).start()
@@ -204,3 +225,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

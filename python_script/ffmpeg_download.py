@@ -11,33 +11,48 @@ def info(msg, queue=None):
     else:
         print(msg)
 
-def download_ffmpeg_windows(ffmpeg_dest_dir="ffmpeg_bin", queue=None):
+def download_ffmpeg_windows(ffmpeg_dest_dir="ffmpeg_bin", queue=None, lang="en"):
     ffmpeg_exe = os.path.join(ffmpeg_dest_dir, "ffmpeg.exe")
     ffprobe_exe = os.path.join(ffmpeg_dest_dir, "ffprobe.exe")
 
     # すでに ffmpeg.exe と ffprobe.exe が両方あるか確認
     if os.path.exists(ffmpeg_exe) and os.path.exists(ffprobe_exe):
-        info("既に ffmpeg および ffprobe が存在しています。\nダウンロードはスキップされました。", queue)
+        if lang == "ja":
+            info("既に ffmpeg および ffprobe が存在しています。\nダウンロードはスキップされました。", queue)
+        elif lang == "en":
+            info("ffmpeg and ffprobe already exist.\nDownload skipped.", queue)
         return
 
     system = platform.system().lower()
     if system == "linux":
-        info("Linuxではffmpegの自動ダウンロードは行いません。", queue)
+        if lang == "ja":
+            info("Linuxではffmpegの自動ダウンロードは行いません。", queue)
+        elif lang == "en":
+            info("Automatic download of ffmpeg is not supported on Linux.", queue)
         return
 
     url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
     zip_path = os.path.join(ffmpeg_dest_dir, "ffmpeg.zip")
 
     os.makedirs(ffmpeg_dest_dir, exist_ok=True)
-
-    info("ffmpeg をダウンロードしています...", queue)
+    if lang == "ja":
+        info("ffmpeg をダウンロードしています...", queue)
+    elif lang == "en":
+        info("Downloading ffmpeg...", queue)
     try:
         urllib.request.urlretrieve(url, zip_path)
     except Exception as e:
-        info(f"[ERROR] ffmpeg のダウンロード中にエラーが発生しました。: {e}", queue)
+        if lang == "ja":
+            info(f"[ERROR] ffmpeg のダウンロード中にエラーが発生しました。: {e}", queue)
+        elif lang == "en":
+            info(f"[ERROR] An error occurred while downloading ffmpeg: {e}", queue)
         return
 
-    info("展開中...", queue)
+    if lang == "ja":
+        info("展開中...", queue)
+    elif lang == "en":
+        info("Extracting...", queue)
+        
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(ffmpeg_dest_dir)
 
@@ -54,7 +69,13 @@ def download_ffmpeg_windows(ffmpeg_dest_dir="ffmpeg_bin", queue=None):
     os.remove(zip_path)
 
     if ffmpeg_found and ffprobe_found:
-        info("ffmpeg のセットアップが完了しました。", queue)
+        if lang == "ja":
+            info("ffmpeg のセットアップが完了しました。", queue)
+        elif lang == "en":    
+            info("ffmpeg setup is complete.", queue)
     else:
-        info("[ERROR] ffmpeg または ffprobe のセットアップに失敗しました。: {e}", queue)
+        if lang == "ja":
+            info("[ERROR] ffmpeg または ffprobe のセットアップに失敗しました。: {e}", queue)
+        elif lang == "en":    
+            info("[ERROR] Failed to set up ffmpeg or ffprobe: {e}", queue)
 

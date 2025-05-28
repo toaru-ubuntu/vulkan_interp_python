@@ -13,7 +13,7 @@ def info(msg, queue=None):
         print(msg)
 
 def convert_image(args):
-    ffmpeg_path, final_jpg, output_jpg, filename = args
+    ffmpeg_path, final_jpg, output_jpg, filename, lang = args
     input_path = os.path.join(final_jpg, filename)
     output_path = os.path.join(output_jpg, filename)
     cmd = [
@@ -26,12 +26,17 @@ def convert_image(args):
     try:
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     except Exception as e:
-        info(f"[ERROR] 変換失敗: {filename} - {e}")
+        if lang == "ja":
+            info(f"[ERROR] 変換失敗: {filename} - {e}")
+        elif lang == "en":
+            info(f"[ERROR] Conversion failed: {filename} - {e}")
 
-def monitor_progress(output_jpg, total_files, queue=None):
-    info("yuvj420p形式に変換しています・・・。", queue)
-    start_time = time.time()  # 追加
-    prev_current = 0          # 追加（直近との差分でなく累積fps）
+def monitor_progress(output_jpg, total_files, queue=None, lang="en"):
+    if lang == "ja":
+        info("yuvj420p形式に変換しています・・・。", queue)
+    elif lang == "en":
+        info("Converting to yuvj420p format...", queue)
+    start_time = time.time()
     while True:
         try:
             current = len([f for f in os.listdir(output_jpg) if f.lower().endswith(".jpg")])
@@ -44,12 +49,12 @@ def monitor_progress(output_jpg, total_files, queue=None):
             break
         time.sleep(0.5)
 
-
 def convert_to_yuvj420p(
     ffmpeg_path,
     final_jpg,
     output_jpg,
-    queue=None
+    queue=None,
+    lang="en"
 ):
 
     # 出力先フォルダがなければ作成（中身があったら消して空で作り直すのが安全）
@@ -65,12 +70,12 @@ def convert_to_yuvj420p(
     total_files = len(jpg_files)
 
     # 進捗監視スレッド
-    progress_thread = threading.Thread(target=monitor_progress, args=(output_jpg, total_files, queue))
+    progress_thread = threading.Thread(target=monitor_progress, args=(output_jpg, total_files, queue, lang))
     progress_thread.start()
 
     # 並列変換
     tasks = [
-        (ffmpeg_path, final_jpg, output_jpg, filename)
+        (ffmpeg_path, final_jpg, output_jpg, filename, lang)
         for filename in jpg_files
     ]
     with Pool() as pool:
@@ -82,5 +87,8 @@ def convert_to_yuvj420p(
     if os.path.exists(final_jpg):
         shutil.rmtree(final_jpg)
     shutil.move(output_jpg, final_jpg)
-    info("yuvj420p形式に変換が完了しました。", queue)
+    if lang == "ja":
+        info("yuvj420p形式に変換が完了しました。", queue)
+    elif lang == "en":
+        info("Conversion to yuvj420p format completed.", queue)
 

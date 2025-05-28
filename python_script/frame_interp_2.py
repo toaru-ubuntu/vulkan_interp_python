@@ -3,7 +3,6 @@ import time
 import shutil
 import subprocess
 import platform
-import sys
 from threading import Thread
 
 def info(msg, queue=None):
@@ -18,7 +17,8 @@ def interpolate_final_frames(
     jpg_folder,
     output_jpg,
     final_jpg,
-    queue=None
+    queue=None,
+    lang="en"
 ):
     # rifeのパスの定義
     is_windows = platform.system().lower() == "windows"
@@ -34,10 +34,16 @@ def interpolate_final_frames(
         if os.path.exists(jpg_folder):
             shutil.rmtree(jpg_folder)
         shutil.move(output_jpg, final_jpg)
-        info("最終フレーム補間なし。", queue)
+        if lang == "ja":
+            info("最終フレーム補間なし。", queue)
+        elif lang == "en":
+            info("No final frame interpolation.", queue)
         return
 
-    info("最終フレーム補完をしています・・・。", queue)
+    if lang == "ja":
+        info("最終フレーム補完をしています・・・。", queue)
+    elif lang == "en":
+        info("Performing final frame interpolation...", queue)
     os.makedirs(final_jpg, exist_ok=True)
     if os.path.exists(jpg_folder):
         shutil.rmtree(jpg_folder)
@@ -60,12 +66,10 @@ def interpolate_final_frames(
             frame_diff = file_count3 - previous_count
             fps = frame_diff / elapsed_time if elapsed_time > 0 else 0
             shared_data["fps"] = fps
-            # ↓ここを統一
             info(f"[PROGRESS] {file_count3}/{file_count2} (avg: {fps:.2f} fps)", queue)
             previous_count = file_count3
             start_time = current_time
             time.sleep(interval)
-
 
     counter_thread = Thread(target=count_files, daemon=True)
     counter_thread.start()
@@ -83,7 +87,10 @@ def interpolate_final_frames(
     try:
         subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True)
     except subprocess.CalledProcessError as e:
-        info(f"[ERROR] RIFEエラー: {e.stderr}", queue)
+        if lang == "ja":
+            info(f"[ERROR] RIFEエラー: {e.stderr}", queue)
+        elif lang == "en":
+            info(f"[ERROR] RIFE error: {e.stderr}", queue)
 
     # 終了
     stop_thread["flag"] = True
@@ -91,9 +98,11 @@ def interpolate_final_frames(
 
     final_count = len([entry.name for entry in os.scandir(final_jpg) if entry.is_file()])
     fps = shared_data["fps"]
-    info("最終フレーム補完が完了しました。", queue)
+    if lang == "ja":
+        info("最終フレーム補完が完了しました。", queue)
+    elif lang == "en":
+        info("Final frame interpolation completed.", queue)
     info(f"[PROGRESS] {final_count}/{file_count2} (avg: {fps:.2f} fps)", queue)
-
 
     if os.path.exists(jpg_folder):
         shutil.rmtree(jpg_folder)

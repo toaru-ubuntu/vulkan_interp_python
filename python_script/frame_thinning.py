@@ -9,8 +9,11 @@ def info(msg, queue=None):
     else:
         print(msg)
 
-def frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, jpg_folder, output_jpg, queue=None):
-    info("重複フレームを探しています・・・。", queue)
+def frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, jpg_folder, output_jpg, queue=None, lang="en"):
+    if lang == "ja":
+        info("重複フレームを探しています・・・。", queue)
+    elif lang == "en":
+        info("Searching for duplicate frames...", queue)
     
     # フレームリストと最終ファイル名
     file_list = sorted(os.listdir(jpg_folder))
@@ -58,7 +61,7 @@ def frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, j
             # 進捗表示
             now = time.time()
             if now - last_time >= 0.5:
-                info(f"[PROGRESS] {j + 2}/{file_count}", queue) # 重複フレームをさがしている
+                info(f"[PROGRESS] {j + 2}/{file_count}", queue)
                 last_time = now
 
     # 出力フォルダ作成
@@ -67,9 +70,15 @@ def frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, j
         shutil.copy(os.path.join(jpg_folder, file_name), output_jpg)
 
     # フレーム削除
-    info("重複フレームを探し終わりました。", queue)
-    info(f"[PROGRESS] {file_count}/{file_count}", queue) # 重複フレームを探し終わりました。
-    info("重複フレームを削除しています・・・。", queue)
+    if lang == "ja":
+        info("重複フレームを探し終わりました。", queue)
+    elif lang == "en":
+        info("Finished searching for duplicate frames.", queue)
+    info(f"[PROGRESS] {file_count}/{file_count}", queue)
+    if lang == "ja":
+        info("重複フレームを削除しています・・・。", queue)
+    elif lang == "en":
+        info("Deleting duplicate frames...", queue)
 
     for frame in frame_thinning:
         file_to_delete = os.path.join(output_jpg, frame)
@@ -85,7 +94,10 @@ def frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, j
         for value in frame_thinning:
             f.write(f"{value}\n")
 
-    info("重複フレームの削除が終了しました。", queue)
+    if lang == "ja":
+        info("重複フレームの削除が終了しました。", queue)
+    elif lang == "en":
+        info("Finished deleting duplicate frames.", queue)
 
     # 入力フォルダを削除 → 出力をリネーム
     if os.path.exists(jpg_folder):

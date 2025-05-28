@@ -14,36 +14,33 @@ def info(msg, queue=None):
 def encode_video(
     temp="temp",
     config_path="config",
-    queue=None
+    queue=None,
+    lang="en"
 ):
-    info("エンコード中・・・。", queue)
+    if lang == "ja":
+        info("エンコード中・・・。", queue)
+    elif lang == "en":
+        info("Encoding...", queue)
 
     is_os = platform.system().lower()
     if is_os == "windows":
-        #info(f"OSは{is_os}", queue)
         ffmpeg_path = os.path.join("ffmpeg_bin", "ffmpeg.exe")
     elif is_os == "linux":
-        #info(f"OSは{is_os}", queue)
         ffmpeg_path = "ffmpeg"
     else:
-        raise RuntimeError("未対応のOSです")
-    # ファイル定義
+        raise RuntimeError("Unsupported OS")
+
     base_file_count = os.path.join(temp, "file_count.txt")
     base_filename   = os.path.join(temp, "filename.txt")
     base_frate      = os.path.join(temp, "frate.txt")
     input_folder    = os.path.join(temp, "final_jpg", "%08d.jpg")
 
-    # 各種ファイルから値を取得
     with open(base_filename, "r", encoding="utf-8") as f:
         filename = f.readline().strip()
-
     with open(base_frate, "r", encoding="utf-8") as f:
         frate = f.readline().strip()
-
     with open(base_file_count, "r", encoding="utf-8") as f:
         file_count_line = f.readline().strip()
-
-    # configファイルから値取得
     with open(config_path, "r", encoding="utf-8") as f:
         lines = [line.strip() for line in f.readlines()]
 
@@ -52,14 +49,10 @@ def encode_video(
     bitrate      = lines[5]
     temp_del = lines[8]
 
-    # ファイル数補正
     file_count = int(file_count_line) * magnification
-
-    # フレームレート補正
     Frate = round(float(frate), 3)
     Frate2 = round(Frate * magnification, 3)
 
-    # 出力ファイル名
     filename2 = os.path.splitext(os.path.basename(filename))[0]
     video_output = "temp_output.mkv"
     audio_output = "temp_audio.wav"
@@ -87,8 +80,6 @@ def encode_video(
         "av1_vaapi": "av1_vaapi"
     }
 
-    # configやGUIから取得するvideo_codecの値を想定通りにそろえる
-    # 例: video_codec = "cpu_h264" など
     if is_os == "windows":
         codec = windows_codec_map.get(video_codec, "libx264")
         ffmpeg_command = [
@@ -125,18 +116,17 @@ def encode_video(
                 video_output
             ]
         else:
-            # 未知コーデックはデフォルトlibx264で
+            codec = "libx264"
             ffmpeg_command = [
                 ffmpeg_path,
                 '-framerate', str(Frate2),
                 '-i', input_folder,
-                '-c:v', "libx264",
+                '-c:v', codec,
                 '-b:v', bitrate,
                 '-pix_fmt', 'yuv420p',
                 video_output
             ]
     else:
-        # 万が一他OSだった場合もlibx264
         codec = "libx264"
         ffmpeg_command = [
             ffmpeg_path,
@@ -148,12 +138,9 @@ def encode_video(
             video_output
         ]
 
-
-    # 進捗表示
     def show_progress(stderr, total_frames):
         progress_pattern = r'frame=\s*(\d+)'
         start_time = time.time()
-        last_reported = 0
         for line in stderr:
             match_progress = re.search(progress_pattern, line)
             if match_progress:
@@ -161,10 +148,7 @@ def encode_video(
                 elapsed = time.time() - start_time
                 fps = current_frames / elapsed if elapsed > 0 else 0.0
                 info(f"[PROGRESS] {current_frames}/{total_frames} (avg: {fps:.2f} fps)", queue)
-                last_reported = current_frames
 
-
-    # エンコード実行
     process = subprocess.Popen(
         ffmpeg_command,
         stdout=subprocess.DEVNULL,
@@ -187,10 +171,12 @@ def encode_video(
         subprocess.run(audio_extract_command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True)
         audio_exists = True
     except subprocess.CalledProcessError:
-        info("音声ファイルはありません。動画のみ出力します。", queue)
+        if lang == "ja":
+            info("音声ファイルはありません。動画のみ出力します。", queue)
+        elif lang == "en":
+            info("No audio file found. Outputting video only.", queue)
         audio_exists = False
 
-    # 音声・映像の結合
     final_merge_command = [
         ffmpeg_path,
         '-i', video_output,
@@ -206,21 +192,26 @@ def encode_video(
             os.remove(video_output)
             os.remove(audio_output)
         except subprocess.CalledProcessError:
-            info("音声と動画の結合に失敗しました。動画のみ保存されます。", queue)
+            if lang == "ja":
+                info("音声と動画の結合に失敗しました。動画のみ保存されます。", queue)
+            elif lang == "en":
+                info("Failed to merge audio and video. Only video will be saved.", queue)
             shutil.move(video_output, final_output)
     else:
         shutil.move(video_output, final_output)
 
-    info("エンコードが終了しました。", queue)
-    info("[PROGRESS] エンコードが終了しました。", queue)
+    if lang == "ja":
+        info("エンコードが終了しました。", queue)
+        info("[PROGRESS] エンコードが終了しました。", queue)
+    elif lang == "en":
+        info("Encoding finished.", queue)
+        info("[PROGRESS] Encoding finished.", queue)
 
-    # 一時フォルダ削除
     if temp_del == "0":
         shutil.rmtree(temp)
     else:
-        info("tempフォルダを残します。", queue)
-
-# --- 使い方 ---
-# 例えば Tkinter ボタンから呼び出す場合
-# encode_video(queue=progress_queue)
+        if lang == "ja":
+            info("tempフォルダを残します。", queue)
+        elif lang == "en":
+            info("Leaving temp folder as is.", queue)
 

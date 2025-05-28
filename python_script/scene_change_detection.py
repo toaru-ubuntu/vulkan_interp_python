@@ -8,16 +8,17 @@ def info(msg, queue=None):
     else:
         print(msg)
 
-def value_definitions(config_path, psnr_file_path, file_count_file, scene_change_frame_file, queue=None):
-    info("シーンチェンジを検出しています・・・。", queue)
+def value_definitions(config_path, psnr_file_path, file_count_file, scene_change_frame_file, queue=None, lang="en"):
+    if lang == "ja":
+        info("シーンチェンジを検出しています・・・。", queue)
+    elif lang == "en":
+        info("Detecting scene changes...", queue)
     
-    #シーンチェンジのしきい値の設定
+    # シーンチェンジのしきい値の設定
     with open(config_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
         scene_change_threshold_line = lines[6]  # 7行目がシーンチェンジしきい値
         scene_change_threshold = float(scene_change_threshold_line.split()[0]) 
-
-
 
     # PSNR値の読み込み
     with open(psnr_file_path, "r", encoding="utf-8") as f:
@@ -29,8 +30,6 @@ def value_definitions(config_path, psnr_file_path, file_count_file, scene_change
 
     threshold = scene_change_threshold
 
-    #info(f"しきい値は：{threshold}", queue)
-
     scene_change_filenames = []
     last_time = time.time()
 
@@ -40,14 +39,20 @@ def value_definitions(config_path, psnr_file_path, file_count_file, scene_change
 
         current_time = time.time()
         if current_time - last_time >= 1:
-            info(f"[PROGRESS] {i + 2}/{file_count}", queue)
+            if lang == "ja":
+                info(f"[PROGRESS] {i + 2}/{file_count}", queue)
+            elif lang == "en":
+                info(f"[PROGRESS] {i + 2}/{file_count}", queue)
             last_time = current_time
 
-    info("シーンチェンジのフレームの調査が終了しました。", queue)
+    if lang == "ja":
+        info("シーンチェンジのフレームの調査が終了しました。", queue)
+    elif lang == "en":
+        info("Scene change frame detection finished.", queue)
     info(f"[PROGRESS] {file_count}/{file_count}", queue)
 
     # 出力
     with open(scene_change_frame_file, "w", encoding="utf-8") as f:
         for value in scene_change_filenames:
             f.write(f"{value}\n")
-    
+

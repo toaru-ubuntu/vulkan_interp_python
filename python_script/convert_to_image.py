@@ -11,20 +11,21 @@ def info(msg, queue=None):
     else:
         print(msg)
 
-def file_and_directory_check(material_folder, filename_path, jpg_folder, queue=None):
-    # 必要なディレクトリを作成
+def file_and_directory_check(material_folder, filename_path, jpg_folder, queue=None, lang="en"):
     os.makedirs(jpg_folder, exist_ok=True)
-    # ファイルリスト作成
     file_list = [entry.name for entry in os.scandir(material_folder) if entry.is_file()]
     if not file_list:
-        info("[ERROR] material フォルダにファイルがありません。", queue)
+        if lang == "ja":
+            info("[ERROR] material フォルダにファイルがありません。", queue)
+        elif lang == "en":
+            info("[ERROR] No files found in the material folder.", queue)
         return None
     filename = file_list[0]
     with open(filename_path, "w", encoding="utf-8") as f:
         f.write(str(filename) + "\n")
     return filename
 
-def get_video_info(ffprobe_path, video_path, temp_folder, queue=None):
+def get_video_info(ffprobe_path, video_path, temp_folder, queue=None, lang="en"):
     """動画の長さ（秒）とフレームレートを取得"""
     duration_cmd = [
         ffprobe_path, "-i", video_path, "-show_entries",
@@ -60,8 +61,11 @@ def run_ffmpeg(ffmpeg_path, video_path, Frate, jpg_folder):
     ffmpeg_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     ffmpeg_process.wait()
 
-def monitor_progress(jpg_folder, total_frames, thread1, queue=None):
-    info("画像ファイルに変換中・・・。", queue)
+def monitor_progress(jpg_folder, total_frames, thread1, queue=None, lang="en"):
+    if lang == "ja":
+        info("画像ファイルに変換中・・・。", queue)
+    elif lang == "en":
+        info("Converting to image files...", queue)
     prev_file_count = -1
     start_time = time.time()
     while thread1.is_alive():
@@ -69,25 +73,30 @@ def monitor_progress(jpg_folder, total_frames, thread1, queue=None):
         if int(file_count) != prev_file_count:
             elapsed = time.time() - start_time
             fps = file_count / elapsed if elapsed > 0 else 0
-            info(f"[PROGRESS] {file_count} / {total_frames} (avg: {fps:.2f} fps)", queue)
+            if lang == "ja":
+                info(f"[PROGRESS] {file_count} / {total_frames} (avg: {fps:.2f} fps)", queue)
+            elif lang == "en":
+                info(f"[PROGRESS] {file_count} / {total_frames} (avg: {fps:.2f} fps)", queue)
             prev_file_count = int(file_count)
         time.sleep(0.5)
 
-
 def convert_video_to_images(
     ffmpeg_path, ffprobe_path, temp_folder, jpg_folder,
-    material_folder, filename_path, queue=None
+    material_folder, filename_path, queue=None, lang="en"
 ):
-    filename = file_and_directory_check(material_folder, filename_path, jpg_folder, queue)
+    filename = file_and_directory_check(material_folder, filename_path, jpg_folder, queue, lang)
     if filename is None:
         return
     video_path = os.path.join(material_folder, filename)
-    info(f"ファイル名: {filename}", queue)
-    duration, Frate = get_video_info(ffprobe_path, video_path, temp_folder, queue)
+    if lang == "ja":
+        info(f"ファイル名: {filename}", queue)
+    elif lang == "en":
+        info(f"File name: {filename}", queue)
+    duration, Frate = get_video_info(ffprobe_path, video_path, temp_folder, queue, lang)
     total_frames = int(round(duration * Frate, 0))
 
     thread1 = threading.Thread(target=run_ffmpeg, args=(ffmpeg_path, video_path, Frate, jpg_folder))
-    thread2 = threading.Thread(target=monitor_progress, args=(jpg_folder, total_frames, thread1, queue))
+    thread2 = threading.Thread(target=monitor_progress, args=(jpg_folder, total_frames, thread1, queue, lang))
 
     thread1.start()
     thread2.start()
@@ -97,12 +106,18 @@ def convert_video_to_images(
     time.sleep(0.5)
     file_count = len([entry.name for entry in os.scandir(jpg_folder) if entry.is_file()])
     if file_count != total_frames:
-        info(f"[ERROR] 期待されたフレーム数 {total_frames} に対して、生成された画像数は {file_count} でした。", queue)
-        raise RuntimeError("フレーム変換に失敗しました。")
+        if lang == "ja":
+            info(f"[ERROR] 期待されたフレーム数 {total_frames} に対して、生成された画像数は {file_count} でした。", queue)
+        elif lang == "en":
+            info(f"[ERROR] Number of generated images ({file_count}) did not match the expected frame count ({total_frames}).", queue)
+        raise RuntimeError("Frame conversion failed.")
 
     file_count_path = os.path.join(temp_folder, "file_count.txt")
     with open(file_count_path, "w", encoding="utf-8") as f:
         f.write(str(file_count) + "\n")
-    info("変換終了！", queue)
+    if lang == "ja":
+        info("変換終了！", queue)
+    elif lang == "en":
+        info("Conversion finished!", queue)
     info(f"[PROGRESS] {file_count} / {total_frames}", queue)
 

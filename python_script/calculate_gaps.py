@@ -8,9 +8,12 @@ def info(msg, queue=None):
     else:
         print(msg)
 
-def calculate_gaps(jpg_folder, gap_file, queue=None):
-    info("重複フレームを削除した情報を収集しています・・・。", queue)
-    #ベースファイルの数を定義
+def calculate_gaps(jpg_folder, gap_file, queue=None, lang="en"):
+    if lang == "ja":
+        info("重複フレームを削除した情報を収集しています・・・。", queue)
+    elif lang == "en":
+        info("Collecting information after duplicate frames have been removed...", queue)
+    # ベースファイルの数を定義
     file_count = len(os.listdir(jpg_folder))
 
     # ファイル名をソートしてリストに格納
@@ -49,11 +52,14 @@ def calculate_gaps(jpg_folder, gap_file, queue=None):
         current_time = time.time()
         # 最後に進捗表示をした時から1秒経過したかを確認
         if current_time - last_time >= 1:
-            info(f"[PROGRESS] {number}/{file_count}", queue) # 重複フレームを削除した情報を収集しています。
+            info(f"[PROGRESS] {number}/{file_count}", queue)
             last_time = current_time
 
         previous_number = number
 
-    info("重複フレームを削除した情報の収集が終わりました。", queue)
-    info(f"[PROGRESS] {file_count}/{file_count}", queue) # 重複フレームを削除した情報の収集が終わりました。
+    if lang == "ja":
+        info("重複フレームを削除した情報の収集が終わりました。", queue)
+    elif lang == "en":
+        info("Finished collecting information after duplicate frames have been removed.", queue)
+    info(f"[PROGRESS] {file_count}/{file_count}", queue)
 

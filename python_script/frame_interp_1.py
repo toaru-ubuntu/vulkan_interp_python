@@ -25,11 +25,13 @@ def run_rife(args):
             "-g", str(gpu)
         ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True, errors='ignore')
     except subprocess.CalledProcessError as e:
-        # 進捗queueにエラーも送れる
-        print(f"RIFEエラー: {e.stderr}")
+        print(f"RIFE error: {e.stderr}")
 
-def progress_bar(output_jpg, total_files, queue=None):
-    info("重複フレームを削除した分を補間中・・・。", queue)
+def progress_bar(output_jpg, total_files, queue=None, lang="en"):
+    if lang == "ja":
+        info("重複フレームを削除した分を補間中・・・。", queue)
+    elif lang == "en":
+        info("Interpolating for removed duplicate frames...", queue)
     initial_files = len([f for f in os.listdir(output_jpg) if f.endswith('.jpg')])
     start_time = time.time()
     interval = 0.5
@@ -38,14 +40,15 @@ def progress_bar(output_jpg, total_files, queue=None):
         processed_files = current_files - initial_files
         elapsed_time = time.time() - start_time
         fps = processed_files / elapsed_time if elapsed_time > 0 else 0
-        # --- メッセージの書式を統一 ---
         info(f"[PROGRESS] {current_files}/{total_files} (avg: {fps:.2f} fps)", queue)
         if current_files >= total_files:
             break
         time.sleep(interval)
-    info("重複フレームを削除した分の補間が終わりました。", queue)
+    if lang == "ja":
+        info("重複フレームを削除した分の補間が終わりました。", queue)
+    elif lang == "en":
+        info("Interpolation for removed duplicate frames finished.", queue)
     info(f"[PROGRESS] {current_files}/{total_files} (avg: {fps:.2f} fps)", queue)
-
 
 def interpolate_frames(
     config_path,
@@ -54,9 +57,9 @@ def interpolate_frames(
     gap_file,
     scene_change_frame_file,
     file_count_path,
-    queue=None
+    queue=None,
+    lang="en"
 ):
-    # rifeのパス
     is_windows = platform.system().lower() == "windows"
     rife_path = os.path.join("rife", "rife-ncnn-vulkan.exe" if is_windows else "rife-ncnn-vulkan")
 
@@ -65,9 +68,6 @@ def interpolate_frames(
         lines = config_file.readlines()
         gpu_value = int(''.join(filter(str.isdigit, lines[1].strip())))
         num_processes = int(''.join(filter(str.isdigit, lines[2].strip())))
-
-    #info(f"使用するGPU: {gpu_value}", queue)
-    #info(f"使用するプロセス数: {num_processes}", queue)
 
     os.makedirs(output_jpg, exist_ok=True)
 
@@ -111,7 +111,7 @@ def interpolate_frames(
                     output_file_number += 1
 
     # プログレスバーのスレッドを起動
-    progress_thread = threading.Thread(target=progress_bar, args=(output_jpg, total_files, queue))
+    progress_thread = threading.Thread(target=progress_bar, args=(output_jpg, total_files, queue, lang))
     progress_thread.start()
 
     # 並列補間処理

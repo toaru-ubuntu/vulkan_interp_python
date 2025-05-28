@@ -6,7 +6,7 @@ def info(msg, queue=None):
         queue.put(msg + "\n")
     else:
         print(msg)
-        
+
 # 中央値を求める関数
 def median(data):
     if not data:
@@ -19,14 +19,16 @@ def median(data):
     else:
         return data_sorted[mid]
 
-def analyse_scene_calculate(config_path, psnr_file_path, psnr_ratio_file_path, scene_change_frame_file, scene_threshold_file, queue=None):
-    #thinning_ratioを読み取り
+def analyse_scene_calculate(
+    config_path, psnr_file_path, psnr_ratio_file_path, scene_change_frame_file, scene_threshold_file,
+    queue=None, lang="en"
+):
+    # thinning_ratioを読み取り
     with open(config_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
-        thinning_ratio_line = lines[7]  # 7行目が「間引き係数」
+        thinning_ratio_line = lines[7]  # 8行目が「間引き係数」
         thinning_ratio = float(thinning_ratio_line.split()[0]) 
 
-        
     # PSNR値と比率を読み込む
     with open(psnr_file_path, "r") as f:
         psnr_values = [float(line.strip()) for line in f if line.strip()]
@@ -37,10 +39,15 @@ def analyse_scene_calculate(config_path, psnr_file_path, psnr_ratio_file_path, s
     with open(scene_change_frame_file, "r") as f:
         scene_frames = [int(line.strip()) for line in f if line.strip()]
 
-
     # 最初のシーンを含めるため先頭に0を追加
     scene_frames = [0] + scene_frames
     scene_threshold_dict = {}
+
+    # シーンごとの処理開始メッセージ
+    if lang == "ja":
+        info("シーンごとのしきい値を計算しています・・・。", queue)
+    elif lang == "en":
+        info("Calculating per-scene thresholds...", queue)
 
     # 各シーンごとに処理
     for i in range(len(scene_frames) - 1):
@@ -68,11 +75,14 @@ def analyse_scene_calculate(config_path, psnr_file_path, psnr_ratio_file_path, s
         scene_change_frame = scene_frames[i + 1]
         scene_threshold_dict[scene_change_frame] = round(threshold, 6)
         
-    #info(f"間引き係数：{thinning_ratio}", queue)
-
-
+    # info(f"間引き係数：{thinning_ratio}", queue)
     # 結果を書き出す
     with open(scene_threshold_file, "w", encoding="utf-8") as f:
         for frame, threshold in scene_threshold_dict.items():
             f.write(f"{frame} {threshold}\n")
+    
+    if lang == "ja":
+        info("シーンごとのしきい値計算が完了しました。", queue)
+    elif lang == "en":
+        info("Per-scene threshold calculation finished.", queue)
 

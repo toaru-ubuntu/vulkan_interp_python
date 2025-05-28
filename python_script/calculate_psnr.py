@@ -2,7 +2,7 @@ import os
 import subprocess
 import re
 import time
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool
 
 def info(msg, queue=None):
     """キューがあればqueue.put、なければprintする共通メッセージ関数"""
@@ -26,7 +26,7 @@ def compute_psnr(args):
 
 def calculate_psnr(
     jpg_folder, file_count_path, ffmpeg_path,
-    psnr_file_path, queue=None, stop_event=None
+    psnr_file_path, queue=None, stop_event=None, lang="en"
 ):
     with open(file_count_path, "r", encoding="utf-8") as f:
         file_count = int(f.readline().strip())
@@ -35,7 +35,10 @@ def calculate_psnr(
     tasks = [(ffmpeg_path, i, full_paths[i], full_paths[i+1]) for i in range(file_count - 1)]
     psnr_values = [None] * (file_count - 1)
 
-    info("psnr値を計算中・・・。", queue)
+    if lang == "ja":
+        info("psnr値を計算中・・・。", queue)
+    elif lang == "en":
+        info("Calculating PSNR values...", queue)
 
     start_time = time.time()
     last_progress_time = [start_time]  # リストにしてnonlocal扱い
@@ -49,7 +52,10 @@ def calculate_psnr(
         now = time.time()
         # 0.5秒ごとにのみ進捗送信
         if now - last_progress_time[0] >= 0.5 or completed == (file_count - 1):
-            progress_msg = f"[PROGRESS] {completed}/{file_count - 1} (avg: {avg_fps:.2f} fps)"
+            if lang == "ja":
+                progress_msg = f"[PROGRESS] {completed}/{file_count - 1} (avg: {avg_fps:.2f} fps)"
+            elif lang == "en":
+                progress_msg = f"[PROGRESS] {completed}/{file_count - 1} (avg: {avg_fps:.2f} fps)"
             if queue:
                 queue.put(progress_msg)
             last_progress_time[0] = now
@@ -58,12 +64,19 @@ def calculate_psnr(
         for result in pool.imap_unordered(compute_psnr, tasks):
             if stop_event is not None and stop_event.is_set():
                 if queue:
-                    queue.put("[INFO] psnr計算が中断されました。\n")
+                    if lang == "ja":
+                        queue.put("[INFO] psnr計算が中断されました。\n")
+                    elif lang == "en":
+                        queue.put("[INFO] PSNR calculation was stopped.\n")
                 return
             on_result(result)
 
     with open(psnr_file_path, "w", encoding="utf-8") as f:
         for val in psnr_values:
             f.write((val if val is not None else "50.000000") + "\n")
-    info("psnr値の計算終了！", queue)
+    if lang == "ja":
+        info("psnr値の計算終了！", queue)
+    elif lang == "en":
+        info("PSNR value calculation finished!", queue)
     info(f"[PROGRESS] {file_count - 1}/{file_count - 1}", queue)
+
