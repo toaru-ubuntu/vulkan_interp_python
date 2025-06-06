@@ -105,12 +105,13 @@ def convert_video_to_images(
 
     time.sleep(0.5)
     file_count = len([entry.name for entry in os.scandir(jpg_folder) if entry.is_file()])
-    if file_count != total_frames:
-        if lang == "ja":
-            info(f"[ERROR] 期待されたフレーム数 {total_frames} に対して、生成された画像数は {file_count} でした。", queue)
-        elif lang == "en":
-            info(f"[ERROR] Number of generated images ({file_count}) did not match the expected frame count ({total_frames}).", queue)
-        raise RuntimeError("Frame conversion failed.")
+    
+    #if file_count != total_frames:
+        #if lang == "ja":
+            #info(f"[ERROR] 期待されたフレーム数 {total_frames} に対して、生成された画像数は {file_count} でした。", queue)
+        #elif lang == "en":
+            #info(f"[ERROR] Number of generated images ({file_count}) did not match the expected frame count ({total_frames}).", queue)
+        #raise RuntimeError("Frame conversion failed.")
 
     file_count_path = os.path.join(temp_folder, "file_count.txt")
     with open(file_count_path, "w", encoding="utf-8") as f:

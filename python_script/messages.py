@@ -1,6 +1,6 @@
 MESSAGES = {
     "en": {
-        "app_title": "vulkan_interp_python_ver0.65",
+        "app_title": "vulkan_interp_python_ver0.66",
         "select_action": "Please select your action",
         "start": "START!",
         "stop": "STOP",
@@ -13,7 +13,7 @@ MESSAGES = {
         
     },
     "ja": {
-        "app_title": "vulkan_interp_python_ver0.65",
+        "app_title": "vulkan_interp_python_ver0.66",
         "select_action": "処理を選択してください",
         "start": "START!",
         "stop": "STOP",
