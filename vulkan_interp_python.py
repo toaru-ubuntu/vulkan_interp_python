@@ -190,7 +190,7 @@ def main():
             value_definitions(config_path, psnr_file_path, file_count_file, scene_change_frame_file, progress_queue, lang)
             if stop_event.is_set(): return
 
-            analyse_scene_calculate(config_path, psnr_file_path, psnr_ratio_file_path, scene_change_frame_file, scene_threshold_file, progress_queue, lang)
+            analyse_scene_calculate(config_path, psnr_file_path, psnr_ratio_file_path, scene_change_frame_file, scene_threshold_file, file_count_file, progress_queue, lang)
             if stop_event.is_set(): return
 
             frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, jpg_folder, output_jpg, progress_queue, lang)

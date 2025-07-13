@@ -103,4 +103,3 @@ def frame_thinning(psnr_file_path, psnr_ratio_file_path, scene_threshold_file, j
     if os.path.exists(jpg_folder):
         shutil.rmtree(jpg_folder)
     shutil.move(output_jpg, jpg_folder)
-
