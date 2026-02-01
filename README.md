@@ -30,3 +30,18 @@ However, please always check and comply with the license terms for the FFmpeg bi
 ただし、ffmpegバイナリおよびrife-ncnn-vulkan等の外部ツールの利用条件を必ずご確認ください。
 
 
+# Usage
+Basic usage is described below. For detailed installation instructions, explanation of settings, and execution examples, please verify the following blog posts (Japanese).
+
+* **Introduction & Basic Usage:**
+	(https://toaru-hitorigoto.com/?p=2229)
+    
+    
+# 使い方
+基本的な使い方は以下の通りですが、詳細な導入手順や、設定項目の細かい解説、実行例についてはブログ記事で詳しく解説しています。
+まずは以下の記事をご覧ください。
+
+* **導入・基本的な使い方:**
+	(https://toaru-hitorigoto.com/?p=2166)
+    
+
