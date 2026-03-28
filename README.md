@@ -30,6 +30,11 @@ However, please always check and comply with the license terms for the FFmpeg bi
 ただし、ffmpegバイナリおよびrife-ncnn-vulkan等の外部ツールの利用条件を必ずご確認ください。
 
 
+# vulkan_interp_python (ver 0.7)
+This major update introduces JSON-based configuration management and high-precision scene change detection powered by PySceneDetect.
+今回のアップデートにより、設定管理のJSON化と、PySceneDetectによる高精度なシーンチェンジ検出に対応しました。
+
+
 # Usage
 Basic usage is described below. For detailed installation instructions, explanation of settings, and execution examples, please verify the following blog posts (Japanese).
 

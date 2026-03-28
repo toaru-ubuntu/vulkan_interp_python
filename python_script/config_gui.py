@@ -1,4 +1,5 @@
 import os
+import json
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -12,7 +13,7 @@ MESSAGES = {
         "save_error": "Error occurred while saving settings:",
         "bitrate_label": "Bitrate",
         "scene_thresh_label": "Scene Change Threshold",
-        "scene_thresh_desc": "Larger value detects more easily (Normal: 12-22, Default: 19)",
+        "scene_thresh_desc": "With PySceneDetect, the optimal value is 3.0",
         "thin_label": "Thinning Factor",
         "thin_desc": "Lower value means stricter thinning (Normal: 0.8-1.2, Default: 1.05)",
         "no_thin_chk": "Check for no thinning",
@@ -36,7 +37,7 @@ MESSAGES = {
         "save_error": "設定の保存中にエラーが発生しました:",
         "bitrate_label": "ビットレート",
         "scene_thresh_label": "シーンチェンジしきい値",
-        "scene_thresh_desc": "大きいほど検出しやすくなります(通常:12〜22, デフォルト:19)",
+        "scene_thresh_desc": "PySceneDetectの導入により適正値は3.0になります",
         "thin_label": "間引き係数",
         "thin_desc": "低いほど厳しく間引きます（通常:0.8〜1.2, デフォルト:1.05）",
         "no_thin_chk": "間引きしない場合はチェック",
@@ -55,51 +56,72 @@ MESSAGES = {
 }
 
 def open_settings_window(CONFIG_PATH, is_os, parent=None):
-    # --- 設定読み込み ---
-    config_values = []
+    # --- 設定読み込み（辞書型へ変更） ---
+    config_dict = {}
     lang = "en"  # デフォルト
+
     if os.path.exists(CONFIG_PATH):
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            config_values = [line.strip() for line in f.readlines()]
-        if len(config_values) > 9 and config_values[-1] in ["ja", "en"]:
-            lang = config_values[-1]
-            config_values = config_values[:-1]  # 言語以外の設定値
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                config_dict = json.load(f) # 辞書型として読み込み
+            lang = config_dict.get("lang", "en")
+        except json.JSONDecodeError:
+            # 既に旧バージョン（行番号方式）を使っているユーザー環境への配慮
+            # エラーが出た場合は一旦空の辞書として扱い、再保存時に新形式(JSON)で上書きさせます
+            print("旧形式の設定ファイルが検出されたため、初期値で起動します。")
+            config_dict = {}
 
     def getmsg(key):
         return MESSAGES[lang][key]
 
     def save_config_and_close(widget_dict, window, original_lang):
         try:
+            # --- 画面の入力欄(ウィジェット)から現在の値を取得 ---
             scale = widget_dict["scale"].get()
             gpu = widget_dict["gpu"].get()
             proc = widget_dict["proc"].get()
             python_path = widget_dict["python_path"].get()
             video_codec = widget_dict["video_codec"].get()
-            bitrate = widget_dict["bitrate"].get().strip()
+            bitrate = widget_dict["bitrate"].get()
             scene_thresh = widget_dict["scene_thresh"].get()
             thin = widget_dict["thin"].get()
-            if widget_dict["no_thin_chk"].get():
-                thin = "1000"
-            keep_temp = widget_dict["keep_temp"].get()
+            keep_temp = widget_dict["keep_temp"].get() # BooleanVarなのでTrue/Falseが返る
             new_lang = lang_var.get()
+            # ------------------------------------------------
+            
             if not bitrate.isdigit():
                 messagebox.showerror(getmsg("error"), getmsg("save_error_num"))
                 return
             bitrate += "k"
-            lines = [
-                scale, gpu, proc, python_path, video_codec,
-                bitrate, scene_thresh, thin, str(int(keep_temp)), new_lang
-            ]
+            
+            # 辞書型（JSONデータ）としてまとめる
+            new_config = {
+                "scale": scale,
+                "gpu": gpu,
+                "proc": proc,
+                "python_path": python_path,
+                "video_codec": video_codec,
+                "bitrate": bitrate,
+                "scene_thresh": scene_thresh,
+                "thin": thin,
+                "keep_temp": int(keep_temp), # True/False を 1/0 に変換して保存
+                "lang": new_lang
+            }
+            
+            # JSON形式でテキストファイルに保存 (indent=4 で見やすく改行・インデントする)
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                f.write('\n'.join(lines))
+                json.dump(new_config, f, indent=4, ensure_ascii=False)
+
             messagebox.showinfo(getmsg("save"), getmsg("saved"))
-            if new_lang != original_lang:
-                window.destroy()
-                # 言語変更時のみ警告
-                messagebox.showwarning(getmsg("save"), getmsg("restart_needed"))
+            
+            # 言語が変更された場合は再起動を促すメッセージ
+            if original_lang != new_lang:
+                messagebox.showinfo(getmsg("title"), getmsg("restart_needed"))
+                
             window.destroy()
+            
         except Exception as e:
-            messagebox.showerror(getmsg("error"), f"{getmsg('save_error')}\n{e}")
+            messagebox.showerror(getmsg("error"), f"{getmsg('save_error')} {e}")
 
     def on_lang_change():
         nonlocal lang
@@ -155,7 +177,11 @@ def open_settings_window(CONFIG_PATH, is_os, parent=None):
     for i, (key, label_text, choices, default) in enumerate(config_options):
         tk.Label(left_frame, text=label_text, anchor="center").pack(pady=(8 if i==0 else 12, 0), anchor="center")
         combo = ttk.Combobox(left_frame, values=choices, state="readonly", justify="center", width=10)
-        combo.set(config_values[i] if i < len(config_values) and config_values[i] in choices else default)
+        
+        # 辞書からキー名で取得（存在しない場合はdefaultを使用）
+        saved_val = config_dict.get(key, default)
+        combo.set(saved_val if saved_val in choices else default)
+        
         combo.pack(anchor="center")
         widget_dict[key] = combo
 
@@ -165,14 +191,16 @@ def open_settings_window(CONFIG_PATH, is_os, parent=None):
     bitrate_frame = tk.Frame(right_frame)
     bitrate_frame.pack(anchor="w")
     bitrate_entry = ttk.Entry(bitrate_frame, justify="center", width=10)
+    
     default_bitrate = "3000"
-    if len(config_values) >= 6 and config_values[5]:
-        val = config_values[5]
-        if val.endswith("k"):
-            val = val[:-1]
-        bitrate_entry.insert(0, val)
+    saved_bitrate = config_dict.get("bitrate", "")
+    if saved_bitrate:
+        if str(saved_bitrate).endswith("k"):
+            saved_bitrate = str(saved_bitrate)[:-1]
+        bitrate_entry.insert(0, saved_bitrate)
     else:
         bitrate_entry.insert(0, default_bitrate)
+        
     bitrate_entry.pack(side=tk.LEFT)
     tk.Label(bitrate_frame, text="k").pack(side=tk.LEFT, padx=(5,0))
     widget_dict["bitrate"] = bitrate_entry
@@ -181,11 +209,10 @@ def open_settings_window(CONFIG_PATH, is_os, parent=None):
     tk.Label(right_frame, text=getmsg("scene_thresh_label"), anchor="w").pack(pady=(16, 0), anchor="w")
     tk.Label(right_frame, text=getmsg("scene_thresh_desc"), font=("Meiryo", 10), fg="gray").pack(anchor="w")
     threshold_entry = ttk.Entry(right_frame, justify="center", width=14)
-    default_threshold = "19"
-    if len(config_values) >= 7 and config_values[6]:
-        threshold_entry.insert(0, config_values[6])
-    else:
-        threshold_entry.insert(0, default_threshold)
+    
+    default_threshold = "3"
+    saved_thresh = config_dict.get("scene_thresh", default_threshold)
+    threshold_entry.insert(0, str(saved_thresh))
     threshold_entry.pack(anchor="w")
     widget_dict["scene_thresh"] = threshold_entry
 
@@ -195,11 +222,12 @@ def open_settings_window(CONFIG_PATH, is_os, parent=None):
     coef_frame = tk.Frame(right_frame)
     coef_frame.pack(pady=(2, 0), anchor="w")
     coef_entry = ttk.Entry(coef_frame, justify="center", width=10)
-    coef_val = "1.05"
-    if len(config_values) >= 8 and config_values[7]:
-        coef_val = config_values[7]
+    
+    # "thin"キーで取得（デフォルトは"1.05"）
+    coef_val = str(config_dict.get("thin", "1.05"))
     coef_entry.insert(0, coef_val)
     coef_entry.pack(side=tk.LEFT)
+    
     special_var = tk.BooleanVar()
     def on_special_toggle():
         if special_var.get():
@@ -211,6 +239,7 @@ def open_settings_window(CONFIG_PATH, is_os, parent=None):
             coef_entry.config(state="normal")
             coef_entry.delete(0, tk.END)
             coef_entry.insert(0, coef_val)
+            
     special_chk = tk.Checkbutton(coef_frame, text=getmsg("no_thin_chk"), variable=special_var, command=on_special_toggle)
     special_chk.pack(side=tk.LEFT, padx=10)
     widget_dict["thin"] = coef_entry
@@ -218,11 +247,14 @@ def open_settings_window(CONFIG_PATH, is_os, parent=None):
 
     # tempフォルダを残す チェックボックス
     keep_temp_var = tk.BooleanVar()
-    if len(config_values) >= 9:
-        keep_temp_var.set(config_values[8] == "1")
+    # 辞書から取得し、1(または"1", True)ならチェックを入れる
+    saved_keep_temp = config_dict.get("keep_temp", 0)
+    keep_temp_var.set(str(saved_keep_temp) in ("1", "True"))
+    
     tk.Checkbutton(right_frame, text=getmsg("keep_temp"), variable=keep_temp_var).pack(pady=(20, 0), anchor="w")
     widget_dict["keep_temp"] = keep_temp_var
 
+    # 保存ボタン
     save_button = tk.Button(
         settings_win,
         text=getmsg("save"),
@@ -234,4 +266,3 @@ def open_settings_window(CONFIG_PATH, is_os, parent=None):
 
     settings_win.grab_set()
     settings_win.wait_window()
-

@@ -4,6 +4,7 @@ import subprocess
 import shutil
 import re
 import time
+import json
 
 def info(msg, queue=None):
     if queue is not None:
@@ -41,13 +42,25 @@ def encode_video(
         frate = f.readline().strip()
     with open(base_file_count, "r", encoding="utf-8") as f:
         file_count_line = f.readline().strip()
-    with open(config_path, "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f.readlines()]
-
-    magnification = int(lines[0])
-    video_codec  = lines[4]
-    bitrate      = lines[5]
-    temp_del = lines[8]
+        
+    # 設定を読み込む (JSON形式)
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+        
+        # JSONから各値を取得。キーが無い場合はデフォルト値を設定
+        magnification = int(config_data.get("scale", "2"))
+        video_codec = config_data.get("video_codec", "libx264")
+        bitrate = config_data.get("bitrate", "3000k")
+        # keep_tempは数値の0/1で保存されているため、文字列に変換しておく
+        temp_del = str(config_data.get("keep_temp", "0"))
+        
+    except Exception:
+        # 万が一のエラー時の安全策
+        magnification = 2
+        video_codec = "libx264"
+        bitrate = "3000k"
+        temp_del = "0"
 
     file_count = int(file_count_line) * magnification
     Frate = round(float(frate), 3)

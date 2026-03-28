@@ -1,4 +1,5 @@
 import os
+import json
 
 def info(msg, queue=None):
     if queue is not None:
@@ -21,11 +22,15 @@ def analyse_scene_calculate(
     config_path, psnr_file_path, psnr_ratio_file_path, scene_change_frame_file, scene_threshold_file, file_count_file,
     queue=None, lang="en"
 ):
-    # thinning_ratioを読み取り
-    with open(config_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        thinning_ratio_line = lines[7]  # 8行目が「間引き係数」
-        thinning_ratio = float(thinning_ratio_line.split()[0]) 
+    # thinning_ratioを読み取り (JSON形式)
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+        # JSONから "thin" キーを取得し、float型（浮動小数点数）に変換（デフォルト1.05）
+        thinning_ratio = float(config_data.get("thin", "1.05"))
+    except Exception:
+        # 万が一の読み込みエラーに備えたデフォルト値
+        thinning_ratio = 1.05
 
     # PSNR値と比率を読み込む
     with open(psnr_file_path, "r") as f:

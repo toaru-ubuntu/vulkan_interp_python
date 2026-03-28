@@ -1,4 +1,5 @@
 import os
+import json
 
 def info(msg, queue=None):
     if queue is not None:
@@ -7,16 +8,21 @@ def info(msg, queue=None):
         print(msg)
         
 def setting_information(config_path, queue=None, lang="en"):
-    # configファイルから値取得
-    with open(config_path, "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f.readlines()]
+    # configファイルから値取得 (JSON形式で読み込み)
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+    except Exception as e:
+        # 万が一読み込みに失敗した場合は空の辞書にして、デフォルト値を使わせる
+        config_data = {}
 
-    magnification = lines[0]
-    process = lines[2]
-    video_codec = lines[4]
-    bitrate = lines[5]
-    scene_change = lines[6]
-    ratio = lines[7]
+    # 辞書からキー名を指定して取得（ファイルにキーが無い場合のデフォルト値も設定）
+    magnification = config_data.get("scale", "2")
+    process = config_data.get("proc", "8")
+    video_codec = config_data.get("video_codec", "h264")
+    bitrate = config_data.get("bitrate", "3000k")
+    scene_change = config_data.get("scene_thresh", "3")
+    ratio = config_data.get("thin", "1.05")
     
     if lang == "ja":
         info(f"補間倍率{magnification}倍。", queue)

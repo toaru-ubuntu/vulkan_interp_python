@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 
 def info(msg, queue=None):
@@ -10,11 +11,15 @@ def info(msg, queue=None):
 
 def noise_reduction(config_path, scene_change_frame_file, final_jpg, queue=None):
 
-    #倍率の読み込み
-    with open(config_path, "r", encoding="utf-8") as f:
-        lines = f.readlines() #f.readlines() は、ファイルのすべての行をリストとして取得します。
-        magnification_line = lines[0]  # 1行目を代入
-        magnification = int(magnification_line.split()[0])  # 1行目の文字列を空白で分割して最初の要素[0]を取得  
+    #倍率(scale)の読み込み (JSON形式)
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+        # JSONから "scale" キーを取得し、数値(int)に変換。キーが無い場合はデフォルトで2倍
+        magnification = int(config_data.get("scale", "2"))
+    except Exception:
+        # 万が一のエラー時の安全策
+        magnification = 2 
             
     def process_frames(scene_change_frame_file, magnification, queue=None):
         delete_frame_list = []

@@ -4,6 +4,7 @@ import subprocess
 from multiprocessing import Pool
 import threading
 import time
+import json
 import platform
 
 def info(msg, queue=None):
@@ -63,11 +64,18 @@ def interpolate_frames(
     is_windows = platform.system().lower() == "windows"
     rife_path = os.path.join("rife", "rife-ncnn-vulkan.exe" if is_windows else "rife-ncnn-vulkan")
 
-    # 設定ファイル読み込み
-    with open(config_path, 'r', encoding='utf-8') as config_file:
-        lines = config_file.readlines()
-        gpu_value = int(''.join(filter(str.isdigit, lines[1].strip())))
-        num_processes = int(''.join(filter(str.isdigit, lines[2].strip())))
+    # 設定ファイル読み込み (JSON形式)
+    try:
+        with open(config_path, 'r', encoding='utf-8') as config_file:
+            config_data = json.load(config_file)
+        
+        # JSONから値を取得し、数値(int)に変換。キーが無い場合はデフォルト値を設定
+        gpu_value = int(config_data.get("gpu", "0"))
+        num_processes = int(config_data.get("proc", "8"))
+    except Exception:
+        # 万が一のエラー時の安全策（デフォルト値）
+        gpu_value = 0
+        num_processes = 8
 
     os.makedirs(output_jpg, exist_ok=True)
 

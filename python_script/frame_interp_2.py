@@ -3,6 +3,7 @@ import time
 import shutil
 import subprocess
 import platform
+import json
 from threading import Thread
 
 def info(msg, queue=None):
@@ -24,11 +25,18 @@ def interpolate_final_frames(
     is_windows = platform.system().lower() == "windows"
     rife_path = os.path.join("rife", "rife-ncnn-vulkan.exe" if is_windows else "rife-ncnn-vulkan")
 
-    # 倍率設定を読み込む
-    with open(config_path, "r", encoding="utf-8") as f:
-        lines = f.readlines()
-        magnification_line = lines[0]
-        magnification = int(magnification_line.split()[0])
+    # 設定を読み込む (JSON形式)
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+        
+        # 倍率(scale)とGPU番号(gpu)を取得
+        magnification = int(config_data.get("scale", "2"))
+        gpu_id = str(config_data.get("gpu", "0"))
+    except Exception:
+        # 万が一のエラー時の安全策
+        magnification = 2
+        gpu_id = "0"
 
     if magnification == 1:
         if os.path.exists(jpg_folder):
@@ -82,7 +90,7 @@ def interpolate_final_frames(
         '-i', jpg_folder,
         '-o', final_jpg,
         '-f', '/%08d.jpg',
-        '-g', '0'
+        '-g', gpu_id
     ]
     try:
         subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, text=True)

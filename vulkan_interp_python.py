@@ -5,6 +5,7 @@ import os
 import platform
 import shutil
 import time
+import json
 from queue import Queue, Empty
 from threading import Event
 from python_script.definition import all_definition
@@ -29,10 +30,14 @@ from python_script.messages import MESSAGES
 def read_lang_from_config(config_path):
     lang = "en"  # デフォルト
     if os.path.exists(config_path):
-        with open(config_path, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f.readlines()]
-        if lines and lines[-1] in ("ja", "en"):
-            lang = lines[-1]
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+            # 辞書から "lang" キーを取得（無ければ "en" を返す）
+            lang = config_data.get("lang", "en")
+        except json.JSONDecodeError:
+            # 万が一古いテキスト形式が残っていた場合などのエラー回避
+            pass
     return lang
 
 def main():
@@ -153,16 +158,16 @@ def main():
 
     def run_main_py_async():
         stop_event.clear()
-
+        log_text.delete("1.0", tk.END)
+        
         def worker():
-            log_text.delete("1.0", tk.END)
             result = all_definition(temp_folder, config_path, material_folder, progress_queue, lang)
             if result == "no_file" or stop_event.is_set(): return
 
             try:
                 with open(config_path, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
-                python_path = lines[3].strip().split()[0]
+                    config_data = json.load(f)
+                python_path = config_data.get("python_path", "python")
             except Exception as e:
                 progress_queue.put(f"[ERROR] {getmsg('config_read_error')}: {e}\n")
                 return
