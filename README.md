@@ -16,7 +16,11 @@
     ```bash
     pip install scenedetect av opencv-python-headless
     
-4. **実行**    
+4. **ffmpegのインストール**
+    ```bash
+    sudo apt install ffmpeg
+    
+5. **実行**    
     ```python
     python vulkan_interp_python.py
 
