@@ -1,5 +1,25 @@
 # vulkan_interp_python
 
+## インストール方法
+1. **リポジトリのクローン**
+    ```bash
+    git clone https://github.com/toaru-ubuntu/vulkan_interp_python.git
+    cd vulkan_interp_python
+    
+2. **uv仮想環境の作成と有効化**
+    ```bash
+    sudo apt install python3-venv
+    python3 -m venv venv
+    source venv/bin/activate
+
+3. **必要なパッケージのインストール**
+    ```bash
+    pip install scenedetect av opencv-python-headless
+    
+4. **実行**    
+    ```python
+    python vulkan_interp_python.py
+
 # Important Notice
 
 This script automatically downloads and uses the [gyan.dev FFmpeg build](https://www.gyan.dev/ffmpeg/builds/).  
